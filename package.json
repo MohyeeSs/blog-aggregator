@@ -10,9 +10,14 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.7"
+  },
   "devDependencies": {
-    "@types/node": "...",
-    "tsx": "...",
-    "typescript": "..."
+    "@types/node": "^22.15.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
   }
 }
