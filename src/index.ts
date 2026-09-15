@@ -1,11 +1,21 @@
 import {
   registerCommand,
   runCommand,
+  middlewareLoggedIn,
   handlerLogin,
+  handlerRegister,
+  handlerReset,
+  handlerUsers,
+  handlerAgg,
+  handlerAddFeed,
+  handlerFeeds,
+  handlerFollow,
+  handlerFollowing,
+  handlerUnfollow,
   type CommandsRegistry,
 } from "./commands.js";
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
@@ -19,13 +29,53 @@ function main() {
   const registry: CommandsRegistry = {};
 
   registerCommand(registry, "login", handlerLogin);
+  registerCommand(registry, "register", handlerRegister);
+  registerCommand(registry, "reset", handlerReset);
+  registerCommand(registry, "users", handlerUsers);
+  registerCommand(registry, "agg", handlerAgg);
+
+  registerCommand(
+    registry,
+    "addfeed",
+    middlewareLoggedIn(handlerAddFeed),
+  );
+
+  registerCommand(
+    registry,
+    "feeds",
+    handlerFeeds,
+  );
+
+  registerCommand(
+    registry,
+    "follow",
+    middlewareLoggedIn(handlerFollow),
+  );
+
+  registerCommand(
+    registry,
+    "following",
+    middlewareLoggedIn(handlerFollowing),
+  );
+
+  registerCommand(
+    registry,
+    "unfollow",
+    middlewareLoggedIn(handlerUnfollow),
+  );
 
   try {
-    runCommand(registry, cmdName, ...cmdArgs);
+    await runCommand(
+      registry,
+      cmdName,
+      ...cmdArgs,
+    );
   } catch (error) {
     console.error(error);
     process.exit(1);
   }
+
+  process.exit(0);
 }
 
 main();

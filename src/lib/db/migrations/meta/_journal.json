@@ -8,6 +8,20 @@
       "when": 1789415595123,
       "tag": "0000_mysterious_warbound",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789499064903,
+      "tag": "0001_certain_winter_soldier",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789500031308,
+      "tag": "0002_wet_havok",
+      "breakpoints": true
     }
   ]
 }
