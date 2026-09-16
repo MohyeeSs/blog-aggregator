@@ -22,6 +22,20 @@
       "when": 1789500031308,
       "tag": "0002_wet_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789592165035,
+      "tag": "0003_stale_jack_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789592480834,
+      "tag": "0004_awesome_reavers",
+      "breakpoints": true
     }
   ]
 }

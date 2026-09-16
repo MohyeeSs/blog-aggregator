@@ -12,6 +12,7 @@ import {
   handlerFollow,
   handlerFollowing,
   handlerUnfollow,
+  handlerBrowse,
   type CommandsRegistry,
 } from "./commands.js";
 
@@ -28,11 +29,35 @@ async function main() {
 
   const registry: CommandsRegistry = {};
 
-  registerCommand(registry, "login", handlerLogin);
-  registerCommand(registry, "register", handlerRegister);
-  registerCommand(registry, "reset", handlerReset);
-  registerCommand(registry, "users", handlerUsers);
-  registerCommand(registry, "agg", handlerAgg);
+  registerCommand(
+    registry,
+    "login",
+    handlerLogin,
+  );
+
+  registerCommand(
+    registry,
+    "register",
+    handlerRegister,
+  );
+
+  registerCommand(
+    registry,
+    "reset",
+    handlerReset,
+  );
+
+  registerCommand(
+    registry,
+    "users",
+    handlerUsers,
+  );
+
+  registerCommand(
+    registry,
+    "agg",
+    handlerAgg,
+  );
 
   registerCommand(
     registry,
@@ -62,6 +87,12 @@ async function main() {
     registry,
     "unfollow",
     middlewareLoggedIn(handlerUnfollow),
+  );
+
+  registerCommand(
+    registry,
+    "browse",
+    middlewareLoggedIn(handlerBrowse),
   );
 
   try {

@@ -11,6 +11,8 @@ import {
   createFeed,
   getFeeds,
   getFeedByUrl,
+  markFeedFetched,
+  getNextFeedToFetch,
 } from "./lib/db/queries/feeds.js";
 
 import {
@@ -18,6 +20,11 @@ import {
   getFeedFollowsForUser,
   deleteFeedFollow,
 } from "./lib/db/queries/feed_follows.js";
+
+import {
+  createPost,
+  getPostsForUser,
+} from "./lib/db/queries/posts.js";
 
 import { fetchFeed } from "./rss.js";
 
@@ -142,15 +149,163 @@ async function handlerUsers(
   }
 }
 
+function parseDuration(
+  durationStr: string,
+): number {
+  const regex = /^(\d+)(ms|s|m|h)$/;
+  const match = durationStr.match(regex);
+
+  if (!match) {
+    throw new Error(
+      "Invalid duration. Use formats like 500ms, 10s, 1m, or 1h",
+    );
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+
+  switch (unit) {
+    case "ms":
+      return amount;
+
+    case "s":
+      return amount * 1000;
+
+    case "m":
+      return amount * 60 * 1000;
+
+    case "h":
+      return amount * 60 * 60 * 1000;
+
+    default:
+      throw new Error("Invalid duration");
+  }
+}
+
+function formatDuration(
+  milliseconds: number,
+): string {
+  let remaining = milliseconds;
+
+  const hours = Math.floor(
+    remaining / (60 * 60 * 1000),
+  );
+
+  remaining %= 60 * 60 * 1000;
+
+  const minutes = Math.floor(
+    remaining / (60 * 1000),
+  );
+
+  remaining %= 60 * 1000;
+
+  const seconds = Math.floor(
+    remaining / 1000,
+  );
+
+  const ms = remaining % 1000;
+
+  let result = "";
+
+  if (hours > 0) {
+    result += `${hours}h`;
+  }
+
+  if (minutes > 0 || hours > 0) {
+    result += `${minutes}m`;
+  }
+
+  if (
+    seconds > 0 ||
+    minutes > 0 ||
+    hours > 0
+  ) {
+    result += `${seconds}s`;
+  }
+
+  if (ms > 0) {
+    result += `${ms}ms`;
+  }
+
+  if (result === "") {
+    result = "0ms";
+  }
+
+  return result;
+}
+
+async function scrapeFeeds(): Promise<void> {
+  const feed = await getNextFeedToFetch();
+
+  if (!feed) {
+    throw new Error("No feeds found");
+  }
+
+  console.log(`Fetching feed: ${feed.name}`);
+  console.log(`URL: ${feed.url}`);
+
+  const rssFeed = await fetchFeed(feed.url);
+
+  await markFeedFetched(feed.id);
+
+  for (const item of rssFeed.channel.item) {
+    const publishedAt = new Date(item.pubDate);
+
+    const validPublishedAt =
+      Number.isNaN(publishedAt.getTime())
+        ? null
+        : publishedAt;
+
+    await createPost(
+      item.title,
+      item.link,
+      item.description || null,
+      validPublishedAt,
+      feed.id,
+    );
+  }
+}
+
 async function handlerAgg(
   cmdName: string,
   ...args: string[]
 ): Promise<void> {
-  const feed = await fetchFeed(
-    "https://www.wagslane.dev/index.xml",
+  if (args.length !== 1) {
+    throw new Error(
+      "usage: agg <time_between_reqs>",
+    );
+  }
+
+  const timeBetweenRequests =
+    parseDuration(args[0]);
+
+  console.log(
+    `Collecting feeds every ${formatDuration(
+      timeBetweenRequests,
+    )}`,
   );
 
-  console.log(JSON.stringify(feed, null, 2));
+  scrapeFeeds().catch(handleError);
+
+  const interval = setInterval(() => {
+    scrapeFeeds().catch(handleError);
+  }, timeBetweenRequests);
+
+  await new Promise<void>((resolve) => {
+    process.on("SIGINT", () => {
+      console.log(
+        "Shutting down feed aggregator...",
+      );
+
+      clearInterval(interval);
+
+      resolve();
+    });
+  });
+}
+
+function handleError(error: unknown): void {
+  console.error(error);
 }
 
 function printFeed(
@@ -268,6 +423,58 @@ async function handlerUnfollow(
   );
 }
 
+async function handlerBrowse(
+  cmdName: string,
+  user: User,
+  ...args: string[]
+): Promise<void> {
+  if (args.length > 1) {
+    throw new Error(
+      "usage: browse [limit]",
+    );
+  }
+
+  let limit = 2;
+
+  if (args.length === 1) {
+    limit = Number(args[0]);
+
+    if (
+      !Number.isInteger(limit) ||
+      limit <= 0
+    ) {
+      throw new Error(
+        "limit must be a positive integer",
+      );
+    }
+  }
+
+  const posts = await getPostsForUser(
+    user.id,
+    limit,
+  );
+
+  for (const item of posts) {
+    console.log(`* ${item.post.title}`);
+    console.log(`  URL: ${item.post.url}`);
+    console.log(`  Feed: ${item.feed.name}`);
+
+    if (item.post.description) {
+      console.log(
+        `  Description: ${item.post.description}`,
+      );
+    }
+
+    if (item.post.publishedAt) {
+      console.log(
+        `  Published: ${item.post.publishedAt.toISOString()}`,
+      );
+    }
+
+    console.log();
+  }
+}
+
 export function registerCommand(
   registry: CommandsRegistry,
   cmdName: string,
@@ -301,4 +508,5 @@ export {
   handlerFollow,
   handlerFollowing,
   handlerUnfollow,
+  handlerBrowse,
 };
